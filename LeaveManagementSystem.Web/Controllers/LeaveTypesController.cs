@@ -9,7 +9,7 @@ using LeaveManagementSystem.Web.Data;
 using LeaveManagementSystem.Web.Models.LeaveTypes;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using LeaveManagementSystem.Web.Services;
+using LeaveManagementSystem.Web.Services.LeaveTypes;
 
 namespace LeaveManagementSystem.Web.Controllers
 {
