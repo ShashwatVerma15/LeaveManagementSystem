@@ -23,8 +23,7 @@ namespace LeaveManagementSystem.Web.Controllers
             return RedirectToAction(nameof(Details), new { userId = id });
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [Authorize(Roles = Roles.Administrator)]
         public async Task<IActionResult> EditAllocation(int? id)
         {
             if (id == null)
@@ -44,6 +43,15 @@ namespace LeaveManagementSystem.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditAllocation(LeaveAllocationEditVM allocation)
         {
+            // Remove validation errors for read-only nested objects not posted back from the form
+            // bug fixes as it was not reloading while we were updating the leave for that employee
+            foreach (var key in ModelState.Keys
+                .Where(k => k.StartsWith("Period") || k.StartsWith("LeaveType.Name") || k.StartsWith("LeaveType.NumberOfDays") || k.StartsWith("Employee.FirstName") || k.StartsWith("Employee.LastName") || k.StartsWith("Employee.Email"))
+                .ToList())
+            {
+                ModelState.Remove(key);
+            }
+
             if (await _leaveTypesService.DaysExceedMaximum(allocation.LeaveType.Id, allocation.Days))
             {
                 ModelState.AddModelError("Days", "The allocation exceeds the maximum leave type value");
