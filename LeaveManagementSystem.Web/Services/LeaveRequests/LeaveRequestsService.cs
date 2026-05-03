@@ -17,7 +17,7 @@ namespace LeaveManagementSystem.Web.Services.LeaveRequests
             var allocation = await _context.LeaveAllocation
                 .FirstAsync(q => q.LeaveTypeId == leaveRequest.LeaveTypeId && q.EmployeeId == leaveRequest.EmployeeId);
 
-            allocation.Days = numberOfdays;
+            allocation.Days += numberOfdays;
 
             await _context.SaveChangesAsync();
         }

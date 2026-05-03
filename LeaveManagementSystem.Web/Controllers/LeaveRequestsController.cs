@@ -59,7 +59,7 @@ namespace LeaveManagementSystem.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(int id)
         {
-            _leaveRequestsService.CancelLeaveRequest(id);
+            await _leaveRequestsService.CancelLeaveRequest(id);
             return RedirectToAction(nameof(Index));
         }
 
