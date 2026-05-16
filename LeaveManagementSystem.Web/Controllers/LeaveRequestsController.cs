@@ -18,10 +18,10 @@ namespace LeaveManagementSystem.Web.Controllers
         }
 
         // Employee Create Request
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(int? leaveTypeId)
         {
             var leaveTypes = await _leaveTypesService.GetAll();
-            var leaveTypesList = new SelectList(leaveTypes, "Id", "Name");
+            var leaveTypesList = new SelectList(leaveTypes, "Id", "Name", leaveTypeId);
             var model = new LeaveRequestCreateVM
             {
                 StartDate = DateOnly.FromDateTime(DateTime.Now),
@@ -64,22 +64,28 @@ namespace LeaveManagementSystem.Web.Controllers
         }
 
         // admin/sup review request
-        public async Task<IActionResult> ListRequest()
+        [Authorize(Policy = "AdminSupervisorOnly")] // this authorization is done in prog.cs
+                                                    // & if we can to do same for other routes we need to follow same steps
+        public async Task<IActionResult> ListRequests()
         {
-            return View();
+            var model = await _leaveRequestsService.AdminGetAllLeaveRequests();
+            return View(model);
         }
 
         //admin/sup review request
-        public async Task<IActionResult> Review(int leaveRequestId)
+        public async Task<IActionResult> Review(int id)
         {
-            return View();
+            var model = await _leaveRequestsService.GetLeaveRequestForReview(id);
+            return View(model);
         }
 
         // admin/sup review request
         [HttpPost]
-        public async Task<IActionResult> Review(/* Use View Model */)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Review(int id, bool approved)
         {
-            return View();
+            await _leaveRequestsService.ReviewLeaveRequest(id, approved);
+            return RedirectToAction(nameof(ListRequests));
         }
     }
 }

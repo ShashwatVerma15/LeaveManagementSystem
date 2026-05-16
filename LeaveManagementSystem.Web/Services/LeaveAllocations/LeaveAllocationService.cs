@@ -1,12 +1,13 @@
 ﻿
 using AutoMapper;
 using LeaveManagementSystem.Web.Models.LeaveAllocations;
+using LeaveManagementSystem.Web.Services.Periods;
+using LeaveManagementSystem.Web.Services.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace LeaveManagementSystem.Web.Services.LeaveAllocations
 {
-    public class LeaveAllocationService(ApplicationDbContext _context, IHttpContextAccessor _httpContextAccessor,
-        UserManager<ApplicationUser> _userManager, IMapper _mapper) : ILeaveAllocationService
+    public class LeaveAllocationService(ApplicationDbContext _context, IUserService _userService, IMapper _mapper, IPeriodsSerive _periodsService) : ILeaveAllocationService
     {
         public async Task AllocateLeave(string employeeId)
         {
@@ -16,11 +17,10 @@ namespace LeaveManagementSystem.Web.Services.LeaveAllocations
                 .ToListAsync();
 
             // get the current period based on the year
-            var currentDate = DateTime.Now;
-            var period = await _context.Period.SingleAsync(q => q.EndDate.Year == currentDate.Year);
+            var period = await _periodsService.GetCurrentPeriod();
 
             // calculate leave based on number of months left in the period
-            var monthsRemaining = period.EndDate.Month - currentDate.Month;
+            var monthsRemaining = period.EndDate.Month - DateTime.Now.Month;
 
             // foreach leave type, create an allocation entry
             foreach (var leaveType in leaveTypes)
@@ -58,11 +58,11 @@ namespace LeaveManagementSystem.Web.Services.LeaveAllocations
             //    employeeId = user?.Id;
             //}
 
-            var currentDate = DateTime.Now;
+            var period = await _periodsService.GetCurrentPeriod();
             var leaveAllocations = await _context.LeaveAllocation // When we write this type like _context it fetches from DB
                 .Include(q => q.LeaveType)
                 .Include(q => q.Period)
-                .Where(q => q.EmployeeId == userId && q.Period.EndDate.Year == currentDate.Year)
+                .Where(q => q.EmployeeId == userId && q.Period.Id == period.Id)
                 .ToListAsync();
 
             return leaveAllocations;
@@ -70,9 +70,9 @@ namespace LeaveManagementSystem.Web.Services.LeaveAllocations
 
         public async Task<EmployeeAllocationVM> GetEmployeeAllocations(string? userId)
         {
-            var user = string.IsNullOrEmpty(userId) 
-                ? await _userManager.GetUserAsync(_httpContextAccessor.HttpContext?.User)
-                : await _userManager.FindByIdAsync(userId); 
+            var user = string.IsNullOrEmpty(userId)
+                ? await _userService.GetLoggedInUser()
+                : await _userService.GetUserById(userId); 
 
             var allocations = await GetAllocations(user.Id);
             var allocationVmList = _mapper.Map<List<LeaveAllocation>, List<LeaveAllocationVM>>(allocations);
@@ -95,7 +95,7 @@ namespace LeaveManagementSystem.Web.Services.LeaveAllocations
 
         public async Task<List<EmployeeListVM>> GetEmployees()
         {
-            var users = await _userManager.GetUsersInRoleAsync(Roles.Employee);
+            var users = await _userService.GetEmployees();
             var employees = _mapper.Map<List<ApplicationUser>, List<EmployeeListVM>>(users.ToList());
 
             return employees;
@@ -111,6 +111,16 @@ namespace LeaveManagementSystem.Web.Services.LeaveAllocations
             var model = _mapper.Map<LeaveAllocationEditVM>(allocation);
 
             return model;
+        }
+
+        public async Task<LeaveAllocation> GetCurrentAllocation(int leaveTypeId, string employeeId)
+        {
+            var period = await _periodsService.GetCurrentPeriod();
+            var allocation = await _context.LeaveAllocation
+                    .FirstAsync(q => q.LeaveTypeId == leaveTypeId
+                    && q.EmployeeId == employeeId
+                    && q.PeriodId == period.Id);
+            return allocation;
         }
 
         public async Task EditAllocation(LeaveAllocationEditVM allocationEditVm)
